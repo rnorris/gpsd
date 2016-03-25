@@ -1051,6 +1051,29 @@ if not env["shared"]:
     LibraryInstall = lambda env, libdir, sources, version: env.Install(libdir, sources)
 else:
     def Library(env, target, sources, version, parse_flags=[]):
+        # Restore allowing override of default shared library build settings
+        # This is primarily to allow cross building (under Mingw) to specify the target build settings
+        #shlib_suffix = env.subst('$SHLIBSUFFIX')
+        #shlib_flags = env.subst('$SHLINKFLAGS')
+        #shlib_suffix = env['SHLIBSUFFIX']
+        #shlib_flags = env['SHLINKFLAGS']
+        #env['SHLIBSUFFIX'] = env.subst('$SHLIBSUFFIX')
+        #env['SHLINKFLAGS'] = env.subst('$SHLINKFLAGS')
+        # TODO work out to override these variables...
+        #print env['SHLIBPREFIX']
+        #exit
+        # THIS SPECIFIC HACK WORKS:
+        if 'i686-w64-mingw32' in env['target'] or 'x86_64-w64-mingw32' in env['target']:
+            shlib_prefix = env.subst('$SHLIBPREFIX')
+            # w32_32 is for Windows sockets
+            # winpthread is for mingw suppling clock_gettime() which is automatically found by scons
+            #  otherwise would need to provide a Windows implementation and override scons detection
+            env.Append(LIBS=['-lws2_32','-lwinpthread'])
+            # No versioning for DLLs - otherwise can cause file naming issues when running the end application
+            # (i.e. the end application build+link seems to work, but at runtime even though libgps.dll exists but the application expects libgps.dll.22.0.0!)
+            version = []
+            env['SHLIBSUFFIX'] = '.dll'
+            env['SHLINKFLAGS'] = '-Wl,--dll -shared -Wl,--output-def,' + shlib_prefix + target + '.def -Wl,--out-implib,' + shlib_prefix + target + '.a'
         # Note: We have a possibility of getting either Object or file
         # list for sources, so we run through the sources and try to make
         # them into SharedObject instances.
@@ -1209,9 +1232,12 @@ test_timespec = env.Program('test_timespec', ['test_timespec.c'],
                           parse_flags=gpsdflags)
 test_trig = env.Program('test_trig', ['test_trig.c'], parse_flags=["-lm"])
 # test_libgps for glibc older than 2.17
+winflags=[]
+if 'i686-w64-mingw32' in env['target'] or 'x86_64-w64-mingw32' in env['target']:
+    winflags=['-lws2_32 -lwinpthread']
 test_libgps = env.Program('test_libgps', ['test_libgps.c'],
                           LIBS=['gps_static'],
-                          parse_flags=["-lm"] + rtlibs + dbusflags)
+                          parse_flags=["-lm"] + rtlibs + dbusflags + winflags)
 
 if not env['socket_export']:
     announce("test_json not building because socket_export is disabled")
