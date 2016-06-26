@@ -2222,6 +2222,10 @@ if os.path.exists("gpsd.c") and os.path.exists(".gitignore"):
     distfiles += base_manpages.keys() + python_manpages.keys()
     if "packaging/rpm/gpsd.spec" not in distfiles:
         distfiles.append("packaging/rpm/gpsd.spec")
+    if "packaging/rpm/mingw32-libgps.spec" not in distfiles:
+        distfiles.append("packaging/rpm/mingw32-libgps.spec")
+    if "packaging/rpm/mingw64-libgps.spec" not in distfiles:
+        distfiles.append("packaging/rpm/mingw64-libgps.spec")
 
     # How to build a zip file.
     zip = env.Command('zip', distfiles, [

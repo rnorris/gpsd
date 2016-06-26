@@ -1,0 +1,87 @@
+# Public Domain CC0
+
+%define _pkg_name gpsd
+Name:           mingw64-libgps
+Version:        @VERSION@
+Release:        0
+Summary:        Client library (only) in C for talking to a running gpsd
+# Enabling C++ / Python cross build is left as an exercise for the reader...
+License:        BSD-3-Clause
+Group:          Development/Libraries/C
+Url:            http://www.catb.org/gpsd/
+Source0:        http://download-mirror.savannah.gnu.org/releases/gpsd/%{_pkg_name}-%{version}.tar.gz
+Source98:       http://download-mirror.savannah.gnu.org/releases/gpsd/%{_pkg_name}-%{version}.tar.gz.sig
+BuildRequires:	mingw64-filesystem
+BuildRequires:	mingw64-binutils
+BuildRequires:	mingw64-runtime
+BuildRequires:	mingw64-cross-binutils
+BuildRequires:	mingw64-cross-gcc
+BuildRequires:	mingw64-cross-pkg-config
+BuildRequires:  mingw64-cross-gcc-c++
+BuildRequires:  scons >= 2.0.1
+Requires(pre):  %fillup_prereq
+Requires(pre):  coreutils
+BuildRoot:      %{_tmppath}/%{name}-%{version}-build
+
+%description
+This package provides the shared library for accessing gpsd from other
+GPS aware applications via the C API only.
+
+%package devel
+Summary:        Client libraries in C for talking to a running gpsd
+Group:          Development/Libraries/C
+
+%description devel
+This package provides C header files for the gpsd shared libraries that
+manage access to a GPS for applications and debugging tools.
+
+%prep
+%setup -q -n %{_pkg_name}-%{version}
+
+# don't set RPATH
+sed -i 's|env.Prepend.*RPATH.*|pass #\0|' SConstruct
+
+%build
+# NB Force off the default stack-protector, otherwise need gcc runtime embedded in the dll?
+export CFLAGS="%{optflags} -fno-stack-protector -std=gnu99 -mconsole -Wl,--subsystem -Wl,console"
+#export SHLINKFLAGS="-Wl,--dll -shared -lws2_32 -lwinpthread -Wl,--output-def,libgps.def -Wl,--out-implib,libgps.a"
+#export SHLIBSUFFIX='.dll'
+scons target=x86_64-w64-mingw32 \
+shared=True \
+socket_export=True \
+gpsd=False \
+gpsdclients=False \
+minimal=True
+#test_libgps
+
+%install
+# Simple manual copy to install locally
+mkdir -p %{buildroot}%{_mingw64_includedir}
+cp gps.h %{buildroot}%{_mingw64_includedir}
+mkdir -p %{buildroot}%{_mingw64_bindir}
+cp libgps.dll %{buildroot}%{_mingw64_bindir}
+mkdir -p %{buildroot}%{_mingw64_libdir}
+cp libgps.a %{buildroot}%{_mingw64_libdir}
+cp libgps.def %{buildroot}%{_mingw64_libdir}
+
+%pre
+
+%post
+
+%preun
+
+%postun
+
+%files
+%defattr(-,root,root)
+%doc README COPYING
+%{_mingw64_bindir}/libgps.dll
+%{_mingw64_libdir}/libgps.a
+%{_mingw64_libdir}/libgps.def
+
+%files devel
+%defattr(-,root,root)
+%doc README COPYING
+%{_mingw64_includedir}/gps.h
+
+%changelog
